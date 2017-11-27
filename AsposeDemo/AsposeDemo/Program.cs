@@ -33,11 +33,11 @@ namespace AsposeDemo
             dt.Columns.Add("ID", typeof(string));
             dt.Columns.Add("Name", typeof(string));
             dt.Columns.Add("Age", typeof(int));
-            dt.Columns.Add("Field_1", typeof(int));
-            dt.Columns.Add("Field_2", typeof(int));
-            dt.Columns.Add("Field_3", typeof(int));
-            dt.Columns.Add("Field_4", typeof(int));
-            dt.Columns.Add("Field_5", typeof(int));
+            dt.Columns.Add("Field_1", typeof(string));
+            dt.Columns.Add("Field_2", typeof(string));
+            dt.Columns.Add("Field_3", typeof(string));
+            dt.Columns.Add("Field_4", typeof(string));
+            dt.Columns.Add("Field_5", typeof(string));
 
             for (int i = 1; i < 4; i++)
             {
@@ -49,11 +49,11 @@ namespace AsposeDemo
                     dr["ID"] = "U00" + j;
                     dr["Name"] = $"D00{i}-User-{j}";
                     dr["Age"] = 20 + j;
-                    dr["Field_1"] = 1;
-                    dr["Field_2"] = 1;
-                    dr["Field_3"] = 1;
-                    dr["Field_4"] = 1;
-                    dr["Field_5"] = 1;
+                    dr["Field_1"] = $"Field-1";
+                    dr["Field_2"] = $"Field-2";
+                    dr["Field_3"] = $"Field-3";
+                    dr["Field_4"] = $"Field-4";
+                    dr["Field_5"] = $"Field-5";
                     dt.Rows.Add(dr);
                 }
             }
@@ -65,6 +65,13 @@ namespace AsposeDemo
                 var newSheet = designer.Workbook.Worksheets[designer.Workbook.Worksheets.AddCopy(0)];
                 newSheet.Name = $"Sheet-{dept.DeptNo}";
                 newSheet.Replace("[A]", $"[A-{dept.DeptNo}]");
+
+                // 模板Sheet添加列
+                newSheet.Cells.InsertColumns(4, 1);
+                var newColTitle = newSheet.Cells.GetCell(3, 4);
+                newColTitle.PutValue("Field_5");
+                var newColValue = newSheet.Cells.GetCell(4, 4);
+                newColValue.PutValue($"&=[A-{dept.DeptNo}].Field_5");
 
                 var newDt = dt.Select($"DeptNO='{dept.DeptNo}'").CopyToDataTable();
                 newDt.TableName = $"A-{dept.DeptNo}";
