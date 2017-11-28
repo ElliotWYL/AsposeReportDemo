@@ -8,6 +8,7 @@ using System.IO;
 using System.Configuration;
 using System.Data;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace AsposeDemo
 {
@@ -25,6 +26,7 @@ namespace AsposeDemo
             var templatePath = appStartDir + ConfigurationManager.AppSettings["TemplatePath"];
             var designer = new WorkbookDesigner();
             designer.Workbook = new Workbook(templatePath);
+            var worksheet = designer.Workbook.Worksheets;
 
             // 3. 获取数据源
             var dt = new DataTable();
@@ -62,34 +64,51 @@ namespace AsposeDemo
             var deptGroup = dt.AsEnumerable().GroupBy(e => new { deptNO = e.Field<string>("DeptNO"), deptName = e.Field<string>("DeptName") }).Select(e => new { DeptNo = e.Key.deptNO, DeptName = e.Key.deptName });
             foreach (var dept in deptGroup)
             {
-                var newSheet = designer.Workbook.Worksheets[designer.Workbook.Worksheets.AddCopy(0)];
+                // 用模板Copy一个新的Sheet
+                var newSheet = worksheet[worksheet.AddCopy(0)];
                 newSheet.Name = $"Sheet-{dept.DeptNo}";
                 newSheet.Replace("[A]", $"[A-{dept.DeptNo}]");
 
-                // 模板Sheet添加列
+                // 模板Sheet动态添加列，并绑定字段
                 newSheet.Cells.InsertColumns(4, 1);
                 var newColTitle = newSheet.Cells.GetCell(3, 4);
                 newColTitle.PutValue("Field_5");
                 var newColValue = newSheet.Cells.GetCell(4, 4);
                 newColValue.PutValue($"&=[A-{dept.DeptNo}].Field_5");
 
+                // 获取Sheet数据源
                 var newDt = dt.Select($"DeptNO='{dept.DeptNo}'").CopyToDataTable();
                 newDt.TableName = $"A-{dept.DeptNo}";
 
+                // 为Sheet绑定数据源
                 designer.SetDataSource(newDt);
                 designer.SetDataSource($"[A-{dept.DeptNo}]DeptNO", dept.DeptNo);
                 designer.SetDataSource($"[A-{dept.DeptNo}]DeptName", dept.DeptName);
                 designer.SetDataSource($"[A-{dept.DeptNo}]Comments", "This is a comment");
+
+                // 将Sheet内容设置为受保护状态
+                newSheet.Protect(ProtectionType.Contents);
             }
 
-            designer.Workbook.Worksheets.RemoveAt(0);
-            designer.Workbook.Worksheets.ActiveSheetIndex = 0;
+            worksheet.RemoveAt(0);              // 移除模板Sheet
+            worksheet.ActiveSheetIndex = 0;     // 设置第一个Sheet选中
 
             // 5. 生成Excel
             designer.Process();
+
+            // 设置第一个Sheet的Border样式（Row=6， Column=2，3）
+            // *****************************************************************************************
+            // 注意：如果需要修改，绑定数据后的Sheet的数据单元格样式，需要把代码放在designer.Process()方法后面，否则只能根据模板的行索引查找
+            // *****************************************************************************************
+            var rBoder = worksheet[0].Cells.CreateRange(5, 1, 1, 2);
+            var borderStyle = worksheet[0].Cells[5, 1].GetStyle();
+            borderStyle.Borders[BorderType.BottomBorder].LineStyle = CellBorderType.Double;
+            borderStyle.Borders[BorderType.BottomBorder].Color = Color.Red; 
+            rBoder.SetStyle(borderStyle);
+
             var reportFolder = appStartDir + ConfigurationManager.AppSettings["ReportFolder"];
             if (!Directory.Exists(reportFolder)) Directory.CreateDirectory(reportFolder);
-            var reportPath = reportFolder + DateTime.Now.ToString("HHmmss")+".xlsx";
+            var reportPath = reportFolder + DateTime.Now.ToString("HHmmss") + ".xlsx";
             designer.Workbook.Save(reportPath, SaveFormat.Xlsx);
 
             // 6. 打开生成好的文件
